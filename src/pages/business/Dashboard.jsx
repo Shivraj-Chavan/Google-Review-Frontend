@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Link2, QrCode, Sparkles, Eye, MousePointerClick, Copy, ArrowRight } from 'lucide-react';
+import { Building2, Link2, QrCode, Sparkles, Eye, MousePointerClick, Copy, ArrowRight, CalendarClock } from 'lucide-react';
 import { Card, Loader, EmptyState } from '../../components/Basics';
 import Button from '../../components/Button';
 import api from '../../services/api';
@@ -42,6 +42,19 @@ export default function Dashboard() {
     { label: 'AI reviews generated', value: analytics?.REVIEW_GENERATED ?? 0, icon: Sparkles },
     { label: 'Reviews copied', value: analytics?.REVIEW_COPIED ?? 0, icon: Copy }
   ];
+
+  const subStart = business.subscription_start_date;
+  const subEnd = business.subscription_end_date;
+  let daysRemaining = null;
+  let subExpired = false;
+  if (subEnd) {
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const todayStart = new Date(new Date().toDateString());
+    const endDate = new Date(subEnd);
+    daysRemaining = Math.ceil((endDate - todayStart) / msPerDay);
+    subExpired = daysRemaining < 0;
+  }
+  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 
   return (
     <div className="space-y-6">
@@ -102,6 +115,30 @@ export default function Dashboard() {
           <Button variant="outline" size="sm">View page</Button>
         </a>
       </Card>
+
+      {subEnd && (
+        <Card className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <CalendarClock className="h-5 w-5 text-ink-700" />
+            <div>
+              <p className="text-sm font-medium text-ink-900">Subscription</p>
+              <p className="text-xs text-ink-300">
+                {fmtDate(subStart)} → {fmtDate(subEnd)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            {subExpired ? (
+              <p className="font-display text-lg font-semibold text-coral-500">Expired</p>
+            ) : (
+              <>
+                <p className="font-display text-2xl font-semibold text-ink-900">{daysRemaining}</p>
+                <p className="text-xs text-ink-300">{daysRemaining === 1 ? 'day left' : 'days left'}</p>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

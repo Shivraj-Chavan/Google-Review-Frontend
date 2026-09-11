@@ -3,8 +3,9 @@ import { Sparkles, Copy, RefreshCw, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from './Button';
 import api from '../services/api';
+import { copyText } from '../utils/clipboard';
 
-const POINT_OPTIONS = ['Service', 'Staff', 'Quality', 'Price', 'Ambience', 'Product', 'Cleanliness'];
+const POINT_OPTIONS = ['Service', 'Staff', 'Quality', 'Price', 'Ambience', 'Product', 'Cleanliness', 'Placement'];
 
 export default function ReviewGenerator({ businessId, rating, googleReviewUrl, onEvent }) {
   const [selectedPoints, setSelectedPoints] = useState([]);
@@ -13,6 +14,54 @@ export default function ReviewGenerator({ businessId, rating, googleReviewUrl, o
   const [generating, setGenerating] = useState(false);
   const [variant, setVariant] = useState(0);
   const lastRating = useRef(null);
+
+
+  // Generic pool used only when the owner hasn't added their own keywords.
+// Deterministically picked per business (via businessId as a seed) so the
+// same business shows the same fallback chips on every visit, not random noise.
+const FALLBACK_POINT_OPTIONS = [
+  'Friendly staff', 'Great value', 'Clean space', 'Fast service',
+  'High quality', 'Good communication', 'On time', 'Would recommend',
+  'Professional', 'Convenient location', 'Attention to detail', 'Easy booking',
+];
+
+function seededPick(pool, seed, count = 6) {
+  let x = Math.abs(Number(seed) || 0) || 1;
+  const rand = () => {
+    x = (x * 9301 + 49297) % 233280;
+    return x / 233280;
+  };
+  const shuffled = [...pool].sort(() => rand() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+const [pointOptions, setPointOptions] = useState(FALLBACK_POINT_OPTIONS.slice(0, 6));
+const [showAllPoints, setShowAllPoints] = useState(false);
+
+useEffect(() => {
+  if (!businessId) return;
+
+  let cancelled = false;
+  fetch(`/api/public/businesses/${businessId}/keywords`)
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Failed (${res.status})`))))
+    .then((data) => {
+      if (cancelled) return;
+      const ownerKeywords = data.keywords || [];
+      setPointOptions(
+        ownerKeywords.length > 0
+          ? ownerKeywords
+          : seededPick(FALLBACK_POINT_OPTIONS, businessId)
+      );
+    })
+    .catch((err) => {
+      console.error('[ReviewForm] keyword load failed:', err);
+      if (!cancelled) setPointOptions(seededPick(FALLBACK_POINT_OPTIONS, businessId));
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, [businessId]);
 
 function togglePoint(p) {
     setSelectedPoints((prev) => {
@@ -47,20 +96,31 @@ function togglePoint(p) {
     }
   }, [businessId, rating]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function copyAndPost() {
-    navigator.clipboard.writeText(review || feedback);
-    onEvent?.('REVIEW_COPIED');
-    onEvent?.('GOOGLE_CLICK');
-    toast.success('Review copied! Opening Google…');
+  async function copyAndPost() {
+    const text = review || feedback;
+    if (!text) {
+      toast.error('Nothing to copy yet — please wait for the review to generate.');
+      return;
+    }
+
+    try {
+      await copyText(text);
+      onEvent?.('REVIEW_COPIED');
+      onEvent?.('GOOGLE_CLICK');
+      toast.success('Review copied! Opening Google…');
+    } catch {
+      onEvent?.('GOOGLE_CLICK');
+      toast.error('Could not copy automatically — please copy the review manually.');
+    }
     setTimeout(() => window.open(googleReviewUrl, '_blank', 'noopener'), 500);
   }
 
   return (
     <div className="space-y-4">
-      <div>
+       <div>
         <p className="mb-2 text-sm font-medium text-ink-900">What did you like? <span className="font-normal text-ink-300">(optional)</span></p>
         <div className="flex flex-wrap gap-2">
-          {POINT_OPTIONS.map((p) => (
+          {(showAllPoints ? pointOptions : pointOptions.slice(0, 6)).map((p) => (
             <button
               key={p}
               type="button"
@@ -74,6 +134,24 @@ function togglePoint(p) {
               {p}
             </button>
           ))}
+          {!showAllPoints && pointOptions.length > 6 && (
+            <button
+              type="button"
+              onClick={() => setShowAllPoints(true)}
+              className="rounded-full border border-dashed border-ink-300 px-3 py-1.5 text-sm font-medium text-ink-500 hover:border-ink-500 hover:text-ink-700 transition-colors"
+            >
+              +{pointOptions.length - 6} more
+            </button>
+          )}
+          {showAllPoints && pointOptions.length > 6 && (
+            <button
+              type="button"
+              onClick={() => setShowAllPoints(false)}
+              className="rounded-full border border-dashed border-ink-300 px-3 py-1.5 text-sm font-medium text-ink-500 hover:border-ink-500 hover:text-ink-700 transition-colors"
+            >
+              Show less
+            </button>
+          )}
         </div>
       </div>
 

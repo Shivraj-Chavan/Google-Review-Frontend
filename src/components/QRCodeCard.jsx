@@ -2,6 +2,7 @@ import { Download, Copy, ExternalLink, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from './Button';
 import { Card } from './Basics';
+// import { copyText } from '../utils/clipboard';
 
 export default function QRCodeCard({ url, qrDataUrl, slug, loading }) {
   function copyLink() {
@@ -9,29 +10,9 @@ export default function QRCodeCard({ url, qrDataUrl, slug, loading }) {
       toast.error('Link is still loading — try again in a moment.');
       return;
     }
-
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(url)
-        .then(() => toast.success('Link copied!'))
-        .catch(() => toast.error('Could not copy — please copy the link manually.'));
-      return;
-    }
-
-    // Fallback for browsers/contexts without the Clipboard API (e.g. non-HTTPS)
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = url;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      toast.success('Link copied!');
-    } catch {
-      toast.error('Could not copy — please copy the link manually.');
-    }
+    copyText(url)
+      .then(() => toast.success('Review link copied!'))
+      .catch(() => toast.error('Could not copy — please copy the link manually.'));
   }
 
   function downloadQr() {

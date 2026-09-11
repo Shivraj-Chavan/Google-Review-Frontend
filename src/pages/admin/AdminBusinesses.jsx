@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Eye, Pencil, Trash2, Power, Copy } from 'lucide-react';
+import { Plus, Eye, Pencil, Trash2, Power, Copy, CalendarClock } from 'lucide-react';
 import DataTable from '../../components/DataTable';
 import Button from '../../components/Button';
 import { Badge, Modal, ConfirmDialog } from '../../components/Basics';
 import { Input, Textarea, Select } from '../../components/Input';
 import api, { getErrorMessage } from '../../services/api';
+import { copyText } from '../../utils/clipboard';
 import { useForm } from 'react-hook-form';
 
 const CATEGORIES = ['Restaurant', 'Cafe', 'Salon & Spa', 'Dental Clinic', 'Clinic / Hospital', 'Retail Store', 'Gym & Fitness', 'Hotel', 'Automotive', 'Real Estate', 'Education', 'Professional Services', 'Other'];
@@ -20,6 +21,23 @@ export default function AdminBusinesses() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [subTarget, setSubTarget] = useState(null);
+  const [subDates, setSubDates] = useState({ subscription_start_date: '', subscription_end_date: '' });
+  const [savingSub, setSavingSub] = useState(false);
+  const [detailKeywords, setDetailKeywords] = useState([]);
+  const [detailKeywordsLoading, setDetailKeywordsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!detail?.id) {
+      setDetailKeywords([]);
+      return;
+    }
+    setDetailKeywordsLoading(true);
+    api.get(`/public/businesses/${detail.id}/keywords`)
+      .then((res) => setDetailKeywords(res.data.keywords || []))
+      .catch(() => setDetailKeywords([]))
+      .finally(() => setDetailKeywordsLoading(false));
+  }, [detail?.id]);
 
   const fetchBusinesses = useCallback((page = 1) => {
     setLoading(true);
@@ -56,8 +74,36 @@ export default function AdminBusinesses() {
   }
 
   function copyLink(slug) {
-    navigator.clipboard.writeText(`${window.location.origin}/review/${slug}`);
-    toast.success('Link copied!');
+    const reviewLink = `${window.location.origin}/review/${slug}`;
+    copyText(reviewLink)
+      .then(() => toast.success('Review link copied!'))
+      .catch(() => toast.error('Could not copy — please copy the link manually.'));
+  }
+
+  function openSubscription(b) {
+    setSubTarget(b);
+    setSubDates({
+      subscription_start_date: b.subscription_start_date?.slice(0, 10) || '',
+      subscription_end_date: b.subscription_end_date?.slice(0, 10) || '',
+    });
+  }
+
+  async function handleSaveSubscription() {
+    if (!subDates.subscription_start_date || !subDates.subscription_end_date) {
+      toast.error('Please set both dates');
+      return;
+    }
+    setSavingSub(true);
+    try {
+      await api.put(`/admin/businesses/${subTarget.id}/subscription`, subDates);
+      toast.success('Subscription updated');
+      setSubTarget(null);
+      fetchBusinesses(pagination.page);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSavingSub(false);
+    }
   }
 
   const columns = [
@@ -81,6 +127,7 @@ export default function AdminBusinesses() {
         <IconBtn title="Edit" onClick={() => setEditBusiness(r)}><Pencil className="h-4 w-4" /></IconBtn>
         <IconBtn title="Copy link" onClick={() => copyLink(r.slug)}><Copy className="h-4 w-4" /></IconBtn>
         <IconBtn title={r.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} onClick={() => toggleStatus(r)}><Power className="h-4 w-4" /></IconBtn>
+        <IconBtn title="Set subscription" onClick={() => openSubscription(r)}><CalendarClock className="h-4 w-4" /></IconBtn>
         <IconBtn title="Delete" danger onClick={() => setDeleteTarget(r)}><Trash2 className="h-4 w-4" /></IconBtn>
       </div>
     ) }
@@ -130,15 +177,36 @@ export default function AdminBusinesses() {
       />
 
       <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.business_name || ''}>
-        {detail && (
+      {detail && (
           <div className="space-y-2 text-sm text-ink-700">
             <p><span className="text-ink-300">Slug:</span> /{detail.slug}</p>
             <p><span className="text-ink-300">Owner:</span> {detail.owner_name} ({detail.owner_email})</p>
             <p><span className="text-ink-300">Category:</span> {detail.category || '—'}</p>
             <p><span className="text-ink-300">Phone:</span> {detail.phone || '—'}</p>
+            <p><span className="text-ink-300">Email:</span> {detail.email || '—'}</p>
+            <p><span className="text-ink-300">Website:</span> {detail.website || '—'}</p>
             <p><span className="text-ink-300">Address:</span> {[detail.address, detail.city, detail.state].filter(Boolean).join(', ') || '—'}</p>
             <p><span className="text-ink-300">Google review URL:</span> {detail.google_review_url || 'Not set'}</p>
-           <p><span className="text-ink-300">Status:</span> <Badge tone={detail.status === 'ACTIVE' ? 'green' : 'coral'}>{detail.status}</Badge></p>
+            <p><span className="text-ink-300">Instagram:</span> {detail.instagram_url || '—'}</p>
+            <p><span className="text-ink-300">Facebook:</span> {detail.facebook_url || '—'}</p>
+            <p><span className="text-ink-300">YouTube:</span> {detail.youtube_url || '—'}</p>
+            <p><span className="text-ink-300">Subscription start:</span> {detail.subscription_start_date ? new Date(detail.subscription_start_date).toLocaleDateString() : 'Not set'}</p>
+            <p><span className="text-ink-300">Subscription expiry:</span> {detail.subscription_end_date ? new Date(detail.subscription_end_date).toLocaleDateString() : 'Not set'}</p>
+            <p><span className="text-ink-300">Status:</span> <Badge tone={detail.status === 'ACTIVE' ? 'green' : 'coral'}>{detail.status}</Badge></p>
+            <div>
+              <p className="mb-1.5 text-ink-300">Keywords:</p>
+              {detailKeywordsLoading ? (
+                <p className="text-xs text-ink-300">Loading…</p>
+              ) : detailKeywords.length === 0 ? (
+                <p className="text-xs text-ink-300">None added yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {detailKeywords.map((k) => (
+                    <span key={k} className="rounded-full bg-ink-50 px-2.5 py-1 text-xs font-medium text-ink-700">{k}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -152,6 +220,27 @@ export default function AdminBusinesses() {
         confirmText="Delete"
         danger
       />
+
+      <Modal open={!!subTarget} onClose={() => setSubTarget(null)} title={`Subscription — ${subTarget?.business_name || ''}`}>
+        <div className="space-y-4">
+          <Input
+            label="Start date"
+            type="date"
+            value={subDates.subscription_start_date}
+            onChange={(e) => setSubDates((d) => ({ ...d, subscription_start_date: e.target.value }))}
+          />
+          <Input
+            label="End date"
+            type="date"
+            value={subDates.subscription_end_date}
+            onChange={(e) => setSubDates((d) => ({ ...d, subscription_end_date: e.target.value }))}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setSubTarget(null)}>Cancel</Button>
+            <Button type="button" loading={savingSub} onClick={handleSaveSubscription}>Save subscription</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

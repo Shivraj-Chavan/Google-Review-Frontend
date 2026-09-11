@@ -22,3 +22,100 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+
+
+:root {
+  /* ========================================
+     BACKGROUNDS
+  ======================================== */
+
+  --bg: #071E1B;
+  --surface: #0B2925;
+  --surface-2: #10332F;
+  --surface-3: #143A35;
+
+  /* Sidebar */
+  --sidebar: #062D29;
+  --sidebar-hover: #0D3934;
+  --sidebar-active: #F5B43C;
+
+
+  /* ========================================
+     BORDERS
+  ======================================== */
+
+  --border: #21433F;
+  --border-light: #183A35;
+  --border-hover: #35625B;
+
+
+  /* ========================================
+     TEXT
+  ======================================== */
+
+  --text: #F4F1E8;
+  --text-secondary: #B6C7C3;
+  --text-muted: #78928D;
+  --text-subtle: #58736E;
+
+
+  /* ========================================
+     PRIMARY / AMBER
+  ======================================== */
+
+  --primary: #F5B43C;
+  --primary-hover: #FFC65A;
+  --primary-active: #E6A52F;
+  --primary-soft: rgba(245, 180, 60, 0.12);
+
+
+  /* ========================================
+     TEAL
+  ======================================== */
+
+  --teal: #5CA9A0;
+  --teal-light: #79C1B7;
+  --teal-dark: #3E827A;
+  --teal-soft: rgba(92, 169, 160, 0.12);
+
+
+  /* ========================================
+     STATUS
+  ======================================== */
+
+  --success: #69B99E;
+  --success-soft: rgba(105, 185, 158, 0.12);
+
+  --danger: #FF6658;
+  --danger-soft: rgba(255, 102, 88, 0.12);
+
+  --warning: #F5B43C;
+  --warning-soft: rgba(245, 180, 60, 0.12);
+
+
+  /* ========================================
+     SHADOWS
+  ======================================== */
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.18);
+
+  --shadow-md:
+    0 8px 24px rgba(0, 0, 0, 0.24);
+
+  --shadow-lg:
+    0 18px 50px rgba(0, 0, 0, 0.30);
+
+  --shadow-primary:
+    0 10px 30px rgba(245, 180, 60, 0.14);
+
+
+  /* ========================================
+     RADIUS
+  ======================================== */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
