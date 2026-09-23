@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Eye, Pencil, Trash2, Power, Copy, CalendarClock } from 'lucide-react';
+import { Plus, Eye, Pencil, Trash2, Power, Copy, CalendarClock, Check, X } from 'lucide-react';
 import DataTable from '../../components/DataTable';
 import Button from '../../components/Button';
 import { Badge, Modal, ConfirmDialog } from '../../components/Basics';
@@ -64,6 +64,7 @@ export default function AdminBusinesses() {
 
   async function handleDelete() {
     try {
+
       await api.delete(`/admin/businesses/${deleteTarget.id}`);
       toast.success('Business deleted');
       setDeleteTarget(null);
@@ -261,27 +262,207 @@ function BusinessFormModal({ open, onClose, onSaved, mode, business }) {
   const { register, handleSubmit, reset } = useForm();
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (open) reset(mode === 'edit' ? business || {} : {});
-  }, [open, business, mode, reset]);
+    // ---- Keywords (edit mode only) ----
+    const [keywords, setKeywords] = useState([]);
+    const [keywordsLoading, setKeywordsLoading] = useState(false);
+    const [newKeyword, setNewKeyword] = useState('');
+    const [addingKeyword, setAddingKeyword] = useState(false);
+    const [editingKeywordId, setEditingKeywordId] = useState(null);
+    const [editingKeywordValue, setEditingKeywordValue] = useState('');
+    const [savingKeywordId, setSavingKeywordId] = useState(null);
+    const [deletingKeywordId, setDeletingKeywordId] = useState(null);
 
-  async function onSubmit(values) {
-    setSaving(true);
-    try {
-      if (mode === 'create') {
-        await api.post('/admin/businesses', values);
-        toast.success('Business created successfully');
-      } else {
-        await api.put(`/admin/businesses/${business.id}`, values);
-        toast.success('Business updated successfully');
+    const [pendingKeywords, setPendingKeywords] = useState([]);
+    const [editingPendingIndex, setEditingPendingIndex] = useState(null);
+    const [editingPendingValue, setEditingPendingValue] = useState('');
+  
+    useEffect(() => {
+      if (open) reset(mode === 'edit' ? business || {} : {});
+      if (!open || mode === 'edit') {
+        setPendingKeywords([]);
+        setEditingPendingIndex(null);
+        setEditingPendingValue('');
       }
-      onSaved();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setSaving(false);
+    }, [open, business, mode, reset]);
+  
+    const fetchKeywords = useCallback(async () => {
+      if (mode !== 'edit' || !business?.id) {
+        setKeywords([]);
+        return;
+      }
+  
+      setKeywordsLoading(true);
+  
+      try {
+        const res = await api.get(`/keywords/${business.id}`);
+        setKeywords(res.data?.keywords || []);
+      } catch (error) {
+        console.error('Fetch keywords error:', error);
+        setKeywords([]);
+        toast.error(getErrorMessage(error));
+      } finally {
+        setKeywordsLoading(false);
+      }
+    }, [mode, business?.id]);
+  
+    useEffect(() => {
+      if (open && mode === 'edit' && business?.id) {
+        fetchKeywords();
+      } else {
+        setKeywords([]);
+        setNewKeyword('');
+        setEditingKeywordId(null);
+        setEditingKeywordValue('');
+      }
+    }, [open, mode, business?.id, fetchKeywords]);
+  
+    async function handleAddKeyword() {
+      const value = newKeyword.trim();
+  
+      if (!value) {
+        toast.error('Please enter a keyword');
+        return;
+      }
+
+      // Create mode — no business yet, hold it locally.
+      if (mode === 'create') {
+        if (pendingKeywords.includes(value)) {
+          toast.error('Keyword already added');
+          return;
+        }
+        setPendingKeywords((prev) => [...prev, value]);
+        setNewKeyword('');
+        return;
+      }
+
+      if (!business?.id) {
+        toast.error('Business ID not found');
+        return;
+      }
+  
+      setAddingKeyword(true);
+  
+      try {
+        await api.post(`/keywords/${business.id}`, { keyword: value });
+        toast.success('Keyword added');
+        setNewKeyword('');
+        await fetchKeywords();
+      } catch (err) {
+        console.error('Add keyword error:', err);
+        toast.error(getErrorMessage(err));
+      } finally {
+        setAddingKeyword(false);
+      }
     }
-  }
+
+    function startEditPendingKeyword(index) {
+      setEditingPendingIndex(index);
+      setEditingPendingValue(pendingKeywords[index]);
+    }
+
+    function cancelEditPendingKeyword() {
+      setEditingPendingIndex(null);
+      setEditingPendingValue('');
+    }
+
+    function saveEditPendingKeyword(index) {
+      const value = editingPendingValue.trim();
+      if (!value) return;
+      setPendingKeywords((prev) => prev.map((k, i) => (i === index ? value : k)));
+      cancelEditPendingKeyword();
+    }
+
+    function removePendingKeyword(index) {
+      setPendingKeywords((prev) => prev.filter((_, i) => i !== index));
+    }
+  
+    function startEditKeyword(k) {
+      setEditingKeywordId(k.id);
+      setEditingKeywordValue(k.keyword);
+    }
+  
+    function cancelEditKeyword() {
+      setEditingKeywordId(null);
+      setEditingKeywordValue('');
+    }
+  
+    async function handleSaveEditKeyword(keywordId) {
+      const value = editingKeywordValue.trim();
+  
+      if (!value) {
+        toast.error('Keyword cannot be empty');
+        return;
+      }
+      if (!business?.id || !keywordId) {
+        toast.error('Invalid business or keyword ID');
+        return;
+      }
+  
+      setSavingKeywordId(keywordId);
+  
+      try {
+        await api.put(`/keywords/${business.id}/${keywordId}`, { keyword: value });
+        toast.success('Keyword updated');
+        cancelEditKeyword();
+        await fetchKeywords();
+      } catch (err) {
+        console.error('Update keyword error:', err);
+        toast.error(getErrorMessage(err));
+      } finally {
+        setSavingKeywordId(null);
+      }
+    }
+  
+    async function handleDeleteKeyword(keywordId) {
+      if (!business?.id || !keywordId) {
+        toast.error('Invalid business or keyword ID');
+        return;
+      }
+      if (!window.confirm('Delete this keyword?')) return;
+  
+      setDeletingKeywordId(keywordId);
+  
+      try {
+        await api.delete(`/keywords/${business.id}/${keywordId}`);
+        toast.success('Keyword deleted');
+        await fetchKeywords();
+      } catch (err) {
+        console.error('Delete keyword error:', err);
+        toast.error(getErrorMessage(err));
+      } finally {
+        setDeletingKeywordId(null);
+      }
+    }
+
+    async function onSubmit(values) {
+      setSaving(true);
+      try {
+        if (mode === 'create') {
+          const res = await api.post('/admin/businesses', values);
+          const created = res.data?.data?.business || res.data?.business;
+  
+          if (created?.id && pendingKeywords.length > 0) {
+            const results = await Promise.allSettled(
+              pendingKeywords.map((kw) => api.post(`/keywords/${created.id}`, { keyword: kw }))
+            );
+            const failedCount = results.filter((r) => r.status === 'rejected').length;
+            if (failedCount > 0) {
+              toast.error(`Business created, but ${failedCount} keyword(s) couldn't be saved.`);
+            }
+          }
+  
+          toast.success('Business created successfully');
+        } else {
+          await api.put(`/admin/businesses/${business.id}`, values);
+          toast.success('Business updated successfully');
+        }
+        onSaved();
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      } finally {
+        setSaving(false);
+      }
+    }
 
   return (
     <Modal open={open} onClose={onClose} title={mode === 'create' ? 'Add business' : 'Edit business'} maxWidth="max-w-2xl">
@@ -316,6 +497,148 @@ function BusinessFormModal({ open, onClose, onSaved, mode, business }) {
           <Input label="YouTube" {...register('youtube_url')} />
           <Input label="Facebook" {...register('facebook_url')} />
         </div>
+
+        {(mode === 'edit' ? business?.id : true) && (
+          <div className="space-y-3 rounded-xl border border-ink-100 p-4">
+            <p className="text-sm font-medium text-ink-900">Keywords</p>
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a keyword…"
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddKeyword();
+                  }
+                }}
+              />
+              <Button type="button" icon={Plus} loading={addingKeyword} onClick={handleAddKeyword}>
+                Add
+              </Button>
+            </div>
+
+            {mode === 'create' ? (
+              pendingKeywords.length === 0 ? (
+                <p className="text-xs text-ink-300">No keywords added yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {pendingKeywords.map((kw, index) =>
+                    editingPendingIndex === index ? (
+                      <div key={`${kw}-${index}`} className="flex items-center gap-1 rounded-full bg-ink-50 px-2 py-1">
+                        <input
+                          autoFocus
+                          value={editingPendingValue}
+                          onChange={(e) => setEditingPendingValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); saveEditPendingKeyword(index); }
+                            if (e.key === 'Escape') cancelEditPendingKeyword();
+                          }}
+                          className="w-32 bg-transparent text-xs font-medium text-ink-700 outline-none"
+                        />
+                        <button type="button" title="Save" onClick={() => saveEditPendingKeyword(index)} className="rounded-full p-0.5 text-emerald-600 hover:bg-emerald-100">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" title="Cancel" onClick={cancelEditPendingKeyword} className="rounded-full p-0.5 text-ink-400 hover:bg-ink-100">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div key={`${kw}-${index}`} className="flex items-center gap-1.5 rounded-full bg-ink-50 px-2.5 py-1 text-xs font-medium text-ink-700">
+                        <span>{kw}</span>
+                        <button type="button" title="Edit" onClick={() => startEditPendingKeyword(index)} className="rounded-full p-0.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button type="button" title="Delete" onClick={() => removePendingKeyword(index)} className="rounded-full p-0.5 text-coral-500 hover:bg-coral-500/10">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+              )
+            ) : keywordsLoading ? (
+              <p className="text-xs text-ink-300">Loading…</p>
+            ) : keywords.length === 0 ? (
+              <p className="text-xs text-ink-300">No keywords added yet.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+              {keywords.map((k) =>
+  editingKeywordId === k.id ? (
+    <div
+      key={k.id}
+      className="flex items-center gap-1 rounded-full bg-ink-50 px-2 py-1"
+    >
+      <input
+        autoFocus
+        value={editingKeywordValue}
+        onChange={(e) => setEditingKeywordValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSaveEditKeyword(k.id);
+          }
+
+          if (e.key === "Escape") {
+            cancelEditKeyword();
+          }
+        }}
+        className="w-32 bg-transparent text-xs font-medium text-ink-700 outline-none"
+      />
+
+      <button
+        type="button"
+        title="Save"
+        disabled={savingKeywordId === k.id}
+        onClick={() => handleSaveEditKeyword(k.id)}
+        className="rounded-full p-0.5 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
+      >
+        <Check className="h-3.5 w-3.5" />
+      </button>
+
+      <button
+        type="button"
+        title="Cancel"
+        onClick={cancelEditKeyword}
+        className="rounded-full p-0.5 text-ink-400 hover:bg-ink-100"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  ) : (
+    <div
+      key={k.id}
+      className="flex items-center gap-1.5 rounded-full bg-ink-50 px-2.5 py-1 text-xs font-medium text-ink-700"
+    >
+      <span>{k.keyword}</span>
+
+      <button
+        type="button"
+        title="Edit"
+        onClick={() => startEditKeyword(k)}
+        className="rounded-full p-0.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+
+      <button
+        type="button"
+        title="Delete"
+        disabled={deletingKeywordId === k.id}
+        onClick={() => handleDeleteKeyword(k.id)}
+        className="rounded-full p-0.5 text-coral-500 hover:bg-coral-500/10 disabled:opacity-50"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  )
+)}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saving}>{mode === 'create' ? 'Create business' : 'Save changes'}</Button>

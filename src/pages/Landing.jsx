@@ -280,6 +280,31 @@ export default function Landing() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
+
+   // TEMP — local testing only, since Google login doesn't work on localhost.
+  // Hits the existing /auth/dev-login endpoint (already auto-disabled in
+  // production by authController.js). Does not touch Google login at all.
+  const [devEmail, setDevEmail] = useState('');
+  const [devLoading, setDevLoading] = useState(false);
+
+  const handleDevLogin = useCallback(async () => {
+    if (!devEmail.trim()) {
+      toast.error('Enter a test email');
+      return;
+    }
+    setDevLoading(true);
+    try {
+      const res = await api.post('/auth/dev-login', { email: devEmail.trim() });
+      const { token, user } = res.data.data;
+      login(token, user);
+      navigate('/business/dashboard');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDevLoading(false);
+    }
+  }, [devEmail, login, navigate]);
+
   const testimonials = [
     {
       name: 'Priya Sharma',
@@ -396,7 +421,8 @@ export default function Landing() {
           NAVBAR
       ========================================================= */}
 
-      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f5f2e9]/90 backdrop-blur-xl">
+<header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/70 bg-[#f5f2e9]/90 backdrop-blur-xl">
+
         <div className="mx-auto flex h-[72px] max-w-8xl items-center justify-between px-5 sm:px-8">
 
           {/* Logo */}
@@ -519,15 +545,23 @@ export default function Landing() {
 
 
 {/* Powered by */}
+
 <div className="hidden xl:block">
   <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
     Powered by
   </p>
 
-  <p className="mt-0.5 whitespace-nowrap text-[12px] font-bold text-slate-700">
+  <a
+    href="https://www.vortexwebtechnologies.com"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="mt-0.5 block whitespace-nowrap text-[12px] font-bold text-slate-700 transition hover:text-emerald-700"
+  >
     Vortex Web Technologies
-  </p>
+  </a>
 </div>
+
+
 
 
 
@@ -565,9 +599,9 @@ export default function Landing() {
 </div>
 
           {/* Mobile menu */}
-          <button
+                  <button
             onClick={() => setMobileMenu(!mobileMenu)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 lg:hidden"
           >
             {mobileMenu ? (
               <X className="h-5 w-5" />
@@ -578,7 +612,7 @@ export default function Landing() {
         </div>
 
         {mobileMenu && (
-          <div className="border-t border-slate-200 bg-white px-5 py-5 md:hidden">
+          <div className="border-t border-slate-200 bg-white px-5 py-5 lg:hidden">
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => scrollTo('how-it-works')}
@@ -608,8 +642,80 @@ export default function Landing() {
                 FAQ
               </button>
 
+              {/* Call + WhatsApp */}
+              <div className="flex gap-3 pt-1">
+                <a
+                  href="tel:+917400193799"
+                  className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-50">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="h-3.5 w-3.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.78.63 2.63a2 2 0 01-.45 2.11L8 9.73a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.85.3 1.73.51 2.63.63A2 2 0 0122 16.92z"
+                      />
+                    </svg>
+                  </div>
+                  Call
+                </a>
+
+                <a
+                  href="https://wa.me/7400193799?text=Google%20Review%20Enquiry%20%E2%80%93%20Hi%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20Google%20ReviewPilot."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-50">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="h-3.5 w-3.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 11.5a8.38 8.38 0 01-9 8.5 8.5 8.5 0 01-4.08-1.04L3 20l1.08-4.58A8.38 8.38 0 013 11.5a8.5 8.5 0 118.5 8.5"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8.5 8.5c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.7c.1.2.1.4-.1.6l-.6.7c.6 1.1 1.5 2 2.6 2.6l.7-.6c.2-.2.4-.2.6-.1l1.7.7c.3.1.4.3.4.5v.5c0 .3 0 .5-.4.7-.4.2-1 .3-1.5.1-1.3-.3-2.6-1-3.7-2.1-1.1-1.1-1.8-2.4-2.1-3.7-.2-.5-.1-1.1.1-1.5z"
+                      />
+                    </svg>
+                  </div>
+                  WhatsApp
+                </a>
+              </div>
+
               <div className="pt-2">
                 <GoogleLoginButton onCredential={handleCredential} />
+              </div>
+
+              {/* Powered by */}
+              <div className="border-t border-slate-100 pt-4 text-center">
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                  Powered by
+                </p>
+
+                <a
+                  href="https://www.vortexwebtechnologies.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-0.5 inline-block text-[12px] font-bold text-slate-700 transition hover:text-emerald-700"
+                >
+                  Vortex Web Technologies
+                </a>
               </div>
             </div>
           </div>
@@ -621,7 +727,7 @@ export default function Landing() {
           HERO
       ========================================================= */}
 
-      <section className="relative overflow-hidden bg-[#f5f2e9]">
+      <section className="relative overflow-hidden bg-[#f5f2e9] pt-12">
 
         {/* Background decoration */}
         <div className="pointer-events-none absolute inset-0">
@@ -638,10 +744,10 @@ export default function Landing() {
           />
         </div>
 
-        <div className="relative mx-auto grid max-w-8xl items-center gap-14 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:gap-10 lg:pb-28 lg:pt-24">
+        <div className="relative mx-auto grid max-w-8xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:gap-10 lg:pb-28 lg:pt-24">
 
           {/* Hero content */}
-          <div className="relative z-10">
+          <div className="relative z-10 pt-10">
 
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
               <Sparkles className="h-3.5 w-3.5" />
@@ -679,6 +785,27 @@ export default function Landing() {
         Signing you in...
       </p>
     )}
+
+    {/* {import.meta.env.DEV && (
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-2">
+        <input
+          type="email"
+          value={devEmail}
+          onChange={(e) => setDevEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleDevLogin(); }}
+          placeholder="test email (dev login)"
+          className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+        />
+        <button
+          type="button"
+          onClick={handleDevLogin}
+          disabled={devLoading}
+          className="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {devLoading ? '...' : 'Go'}
+        </button>
+      </div>
+    )} */}
   </div>
 {/* </div> */}
 
@@ -716,211 +843,209 @@ export default function Landing() {
               3D HERO VISUAL
           ===================================================== */}
 
-          <div className="relative mx-auto h-[540px] w-full max-w-[570px] [perspective:1200px]">
+<div className="relative mx-auto h-[280px] w-full min-[400px]:h-[350px] sm:h-[540px] sm:max-w-[570px] [perspective:1200px]">
 
-          <div className="absolute -top-6 left-1/2 z-20 -translate-x-1/2 animate-bounce">
-  <div className="relative flex items-center gap-1.5 rounded-full bg-emerald-950 px-4 py-2 text-[10px] font-bold text-white shadow-xl">
-    <span className="text-amber-400">✦</span>
-    7 Days Free Trial
+{/* Fixed 570x540 canvas — every child's position/animation stays exactly as designed. Only visually scaled down on mobile, always centered. */}
+<div className="absolute left-1/2 top-0 h-[540px] w-[570px] origin-top -translate-x-1/2 scale-[0.48] min-[400px]:scale-[0.62] sm:scale-100">
 
-    <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-emerald-950" />
+  <div className="absolute -top-6 left-1/2 z-20 -translate-x-1/2 animate-bounce">
+    <div className="relative flex items-center gap-1.5 rounded-full bg-emerald-950 px-4 py-2 text-[10px] font-bold text-white shadow-xl">
+      <span className="text-amber-400">✦</span>
+      7 Days Free Trial
+
+      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-emerald-950" />
+    </div>
   </div>
-</div>
 
-            {/* Glow */}
-            <div className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-emerald-300/30 to-amber-300/30 blur-3xl" />
+  {/* Glow */}
+  <div className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-emerald-300/30 to-amber-300/30 blur-3xl" />
 
-            {/* Rotating rings */}
-            <div className="hero-ring absolute left-1/2 top-1/2 h-[390px] w-[390px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-200/60" />
+  {/* Rotating rings */}
+  <div className="hero-ring absolute left-1/2 top-1/2 h-[390px] w-[390px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-200/60" />
 
-            <div className="hero-ring-reverse absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/70 border-dashed" />
+  <div className="hero-ring-reverse absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/70 border-dashed" />
 
-            {/* QR floating card */}
-            <div className="float-slow absolute left-[3%] top-[20%] z-20 w-[145px] rotate-[-8deg] rounded-2xl border border-white bg-white p-4 shadow-[0_25px_70px_rgba(15,23,42,0.15)]">
+  {/* QR floating card */}
+  <div className="float-slow absolute left-[3%] top-[20%] z-20 w-[145px] rotate-[-8deg] rounded-2xl border border-white bg-white p-4 shadow-[0_25px_70px_rgba(15,23,42,0.15)]">
 
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
-                  <QrCode className="h-4 w-4 text-emerald-600" />
-                </div>
+    <div className="mb-3 flex items-center justify-between">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50">
+        <QrCode className="h-4 w-4 text-emerald-600" />
+      </div>
 
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                  Scan
-                </span>
-              </div>
+      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+        Scan
+      </span>
+    </div>
 
-              <FakeQR />
+    <FakeQR />
 
-              <p className="mt-3 text-center text-[10px] font-semibold text-slate-600">
-                Scan to review
-              </p>
-            </div>
-
-
-            {/* Main phone */}
-            <div className="float-phone absolute left-1/2 top-1/2 z-10 h-[465px] w-[280px] -translate-x-1/2 -translate-y-1/2 rotate-[5deg] rounded-[38px] border-[7px] border-slate-900 bg-slate-950 p-2 shadow-[0_40px_100px_rgba(15,23,42,0.3)]">
-
-              {/* Dynamic island */}
-              <div className="absolute left-1/2 top-2 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
-
-              <div className="relative h-full overflow-hidden rounded-[29px] bg-gradient-to-b from-slate-50 to-white">
-
-                {/* Phone header */}
-                <div className="px-5 pb-3 pt-10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[9px] font-semibold text-slate-400">
-                        GOOGLE REVIEWPILOT
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        How was your visit?
-                      </p>
-                    </div>
-
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50">
-                      <Star className="h-4 w-4 fill-emerald-500 text-emerald-500" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stars */}
-                <div className="px-5 py-4">
-                  <div className="flex justify-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <div
-                        key={star}
-                        className="star-pop flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50"
-                        style={{ animationDelay: `${star * 0.12}s` }}
-                      >
-                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* AI card */}
-                <div className="mx-4 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-
-<div className="mb-3 flex items-center gap-2">
-  {/* <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-950 to-amber-500">
-    <Sparkles className="h-3.5 w-3.5 text-white" />
-  </div> */}
-
-<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white overflow-hidden">
-  <img
-    src={cnclogo}
-    alt="CNC WEB WORLD"
-    className="h-full w-full object-contain"
-  />
-</div>
-
-  <div>
-    <p className="text-[10px] font-bold text-slate-800">
-      CNC WEB WORLD
-    </p>
-
-    <p className="text-[8px] text-slate-400">
-      Customer review
+    <p className="mt-3 text-center text-[10px] font-semibold text-slate-600">
+      Scan to review
     </p>
   </div>
-</div>
 
-{/* Review */}
-<div className="flex items-center gap-1 mb-2">
-  {[1, 2, 3, 4, 5].map((star) => (
-    <Star
-      key={star}
-      className="h-3 w-3 fill-amber-400 text-amber-400"
-    />
-  ))}
-</div>
 
-<p className="text-[10px] leading-5 text-slate-500">
-  "CNC WEB WORLD provided excellent service and delivered exactly
-  what we needed. The team was professional, responsive, and easy
-  to work with. Highly recommended!"
-</p>
-
-<div className="mt-3 flex items-center justify-between">
-
-  {/* <span className="text-[8px] font-semibold text-emerald-600">
-    ★ 5.0 Customer Rating
-  </span> */}
-
-  <button
-  onClick={() =>
-    window.location.href =
-      "https://reviewpilot.vortexwebtechnologies.com/review/cnc-webworld"
+  {/* Main phone */}
+  <div  onClick={() =>
+    (window.location.href =
+      "https://reviewpilot.vortexwebtechnologies.com/review/cnc-webworld")
   }
-  className="flex h-6 items-center gap-1 rounded-lg bg-emerald-950 px-6 text-[8px] font-semibold text-white transition hover:bg-emerald-900"
->
-  <ExternalLink className="h-3 w-3" />
-  Post to Google
-</button>
+  className="float-phone absolute left-1/2 top-1/2 z-10 h-[465px] w-[280px] -translate-x-1/2 -translate-y-1/2 rotate-[5deg] rounded-[38px] border-[7px] border-slate-900 bg-slate-950 p-2 shadow-[0_40px_100px_rgba(15,23,42,0.3)]">
 
-</div>
+    {/* Dynamic island */}
+    <div className="absolute left-1/2 top-2 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
 
-</div>
+    <div className="relative h-full overflow-hidden rounded-[29px] bg-gradient-to-b from-slate-50 to-white">
 
-              </div>
-            </div>
+      {/* Phone header */}
+      <div className="px-5 pb-3 pt-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-semibold text-slate-400">
+              GOOGLE REVIEWPILOT
+            </p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              How was your visit?
+            </p>
+          </div>
 
-
-            {/* Review floating card */}
-            <div className="float-review absolute bottom-[12%] right-[1%] z-20 w-[175px] rotate-[6deg] rounded-2xl border border-white bg-white p-4 shadow-[0_25px_70px_rgba(15,23,42,0.15)]">
-
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 text-[10px] font-bold text-white">
-                  MC
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold text-slate-800">
-                    Mumbai Dental Care
-                  </p>
-                  <div className="mt-0.5 flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className="h-2.5 w-2.5 fill-amber-400 text-amber-400"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <p className="mt-3 text-[9px] leading-4 text-slate-500">
-                "Excellent experience. Friendly staff and very professional
-                doctor."
-              </p>
-
-              <div className="mt-3 flex items-center gap-1 text-[8px] font-semibold text-amber-600">
-                <Check className="h-3 w-3" />
-                Published on Google
-              </div>
-            </div>
-
-
-            {/* Analytics bubble */}
-            <div className="float-slow absolute right-[2%] top-[9%] rounded-xl border border-white bg-white/90 px-4 py-3 shadow-xl backdrop-blur">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50">
-                  <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
-                </div>
-
-                <div>
-                  <p className="text-[9px] text-slate-400">
-                    Google clicks
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">
-                    +28.4%
-                  </p>
-                </div>
-              </div>
-            </div>
-
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50">
+            <Star className="h-4 w-4 fill-emerald-500 text-emerald-500" />
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Stars */}
+      <div className="px-5 py-4">
+        <div className="flex justify-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <div
+              key={star}
+              className="star-pop flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50"
+              style={{ animationDelay: `${star * 0.12}s` }}
+            >
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* AI card */}
+      <div className="mx-4 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white overflow-hidden">
+            <img
+              src={cnclogo}
+              alt="CNC WEB WORLD"
+              className="h-full w-full object-contain"
+            />
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold text-slate-800">
+              CNC WEB WORLD
+            </p>
+
+            <p className="text-[8px] text-slate-400">
+              Customer review
+            </p>
+          </div>
+        </div>
+
+        {/* Review */}
+        <div className="flex items-center gap-1 mb-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+              key={star}
+              className="h-3 w-3 fill-amber-400 text-amber-400"
+            />
+          ))}
+        </div>
+
+        <p className="text-[10px] leading-5 text-slate-500">
+          "CNC WEB WORLD provided excellent service and delivered exactly
+          what we needed. The team was professional, responsive, and easy
+          to work with. Highly recommended!"
+        </p>
+
+        <div className="mt-3 flex items-center justify-between">
+          <button
+            // onClick={() =>
+            //   window.location.href =
+            //     "https://reviewpilot.vortexwebtechnologies.com/review/cnc-webworld"
+            // }
+            className="flex h-6 items-center gap-1 rounded-lg bg-emerald-950 px-6 text-[8px] font-semibold text-white transition hover:bg-emerald-900"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Post to Google
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+
+  {/* Review floating card */}
+  <div className="float-review absolute bottom-[12%] right-[1%] z-20 w-[175px] rotate-[6deg] rounded-2xl border border-white bg-white p-4 shadow-[0_25px_70px_rgba(15,23,42,0.15)]">
+
+    <div className="flex items-center gap-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 text-[10px] font-bold text-white">
+        MC
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-800">
+          Mumbai Dental Care
+        </p>
+        <div className="mt-0.5 flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <Star
+              key={s}
+              className="h-2.5 w-2.5 fill-amber-400 text-amber-400"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <p className="mt-3 text-[9px] leading-4 text-slate-500">
+      "Excellent experience. Friendly staff and very professional
+      doctor."
+    </p>
+
+    <div className="mt-3 flex items-center gap-1 text-[8px] font-semibold text-amber-600">
+      <Check className="h-3 w-3" />
+      Published on Google
+    </div>
+  </div>
+
+
+  {/* Analytics bubble */}
+  <div className="float-slow absolute right-[2%] top-[9%] rounded-xl border border-white bg-white/90 px-4 py-3 shadow-xl backdrop-blur">
+    <div className="flex items-center gap-2">
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50">
+        <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
+      </div>
+
+      <div>
+        <p className="text-[9px] text-slate-400">
+          Google clicks
+        </p>
+        <p className="text-sm font-bold text-slate-900">
+          +28.4%
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+</section>
 
 
       {/* =========================================================
@@ -1101,7 +1226,7 @@ export default function Landing() {
 
 
       {/* RIGHT - IMAGE */}
-      <div className="relative flex min-h-[420px] items-center justify-center lg:min-h-[520px]">
+      <div className="relative flex items-center justify-center lg:min-h-[520px]">
 
         {/* Image glow */}
         <div className="absolute h-72 w-72 rounded-full bg-amber-500/20 blur-[100px]" />
@@ -2521,7 +2646,7 @@ export default function Landing() {
       <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
 
         {/* Image */}
-        <div className="relative h-52 overflow-hidden sm:h-60">
+        <div className="relative h-52 overflow-hidden sm:h-60 ">
           <img
             src={leaveimage}
             alt="Customer scanning a review QR code"
@@ -2864,7 +2989,7 @@ export default function Landing() {
         {/* Price */}
         <div className="mb-7">
           <span className="text-4xl font-black text-emerald-950">
-            ₹5,000
+            ₹4,000
           </span>
           <span className="ml-2 text-sm font-medium text-slate-400">
             / first year
@@ -2904,66 +3029,65 @@ export default function Landing() {
           }}
           className="mt-8 w-full rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-900 hover:shadow-xl"
         >
-          Get Started — ₹5,000
+          Get Started — ₹4,000
         </button>
       </div>
 
       {/* Second Year */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 shadow-lg">
-        <div className="mb-6">
-          <h3 className="text-xl font-extrabold text-emerald-950">
-            🔄 Renewal from Second Year
-          </h3>
+   {/* Second Year */}
+<div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 shadow-lg">
+  <div className="absolute right-5 top-5 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-emerald-950">
+    Continued Access
+  </div>
 
-          <p className="mt-2 text-sm text-slate-500">
-            Annual renewal for continued access
-          </p>
-        </div>
+  <div className="mb-6">
+    <h3 className="text-xl font-extrabold text-emerald-950">
+      🔄 Renewal from Second Year
+    </h3>
 
-        {/* Price */}
-        <div className="mb-7">
-          <span className="text-4xl font-black text-emerald-950">
-            ₹8,000
-          </span>
-          <span className="ml-2 text-sm font-medium text-slate-400">
-            / year
-          </span>
-        </div>
+    <p className="mt-2 text-sm text-slate-500">
+      Everything from your first year, plus continued support and updates
+    </p>
+  </div>
 
-        {/* Features */}
-        <ul className="space-y-3">
-          {[
-            "Continued QR code access — no downtime",
-            "Keep unlimited scans & reviews active",
-            "Ongoing access to AI review generator",
-            "Lifetime support & future upgrades",
-            "Google review page remains live",
-            "Annual platform maintenance & security updates",
-          ].map((feature, index) => (
-            <li
-              key={index}
-              className="flex items-start gap-3 text-sm text-slate-600"
-            >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-600">
-                ✓
-              </span>
+  {/* Price */}
+  <div className="mb-7">
+    <span className="text-4xl font-black text-emerald-950">
+      ₹5,000
+    </span>
 
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
+    <span className="ml-2 text-sm font-medium text-slate-400">
+      / year
+    </span>
+  </div>
 
-        {/* Button */}
-        <button
-          onClick={() => {
-            window.location.href =
-              "https://wa.me/7400193799?text=Google%20Review%20Enquiry%20%E2%80%93%20Hi%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20Google%20ReviewPilot.";
-          }}
-          className="mt-8 w-full rounded-xl border-2 border-emerald-950 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950 hover:text-white"
-        >
-          Renew — ₹8,000 / Year
-        </button>
-      </div>
+  {/* Features */}
+  <ul className="space-y-3">
+    {[ "Custom QR code + mobile-optimized review page", "AI-generated reviews + direct Google Reviews integration", "Unlimited scans & reviews remain active", "Continued QR code access — no downtime", "Ongoing access to AI review generator", "Google review page remains live", "24/7 WhatsApp support + lifetime assistance", "Annual maintenance, security updates & future upgrades", ].map((feature, index) => (
+      <li
+        key={index}
+        className="flex items-start gap-3 text-sm text-slate-600"
+      >
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-600">
+          ✓
+        </span>
+
+        <span>{feature}</span>
+      </li>
+    ))}
+  </ul>
+
+  {/* Button */}
+  <button
+    onClick={() => {
+      window.location.href =
+        "https://wa.me/7400193799?text=Google%20Review%20Enquiry%20%E2%80%93%20Hi%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20Google%20ReviewPilot.";
+    }}
+    className="mt-8 w-full rounded-xl border-2 border-emerald-950 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950 hover:text-white"
+  >
+    Renew — ₹5,000 / Year
+  </button>
+</div>
     </div>
 
     {/* Bottom Note */}

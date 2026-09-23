@@ -3,6 +3,12 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 /**
  * Generic admin data table. `columns` = [{ key, label, render? }]
  * Pagination/search state is controlled by the parent (server-side).
+ *
+ * Desktop (sm and up): unchanged horizontally-scrolling table.
+ * Mobile (below sm): each row becomes a stacked card — first column as the
+ * card title, remaining columns as label/value pairs. A column with
+ * key === 'actions' is rendered full-width in its own row at the bottom of
+ * the card instead of a label/value pair, since it holds buttons, not data.
  */
 export default function DataTable({
   columns, rows, rowKey = 'id',
@@ -10,6 +16,10 @@ export default function DataTable({
   filters, page, totalPages, onPageChange,
   emptyLabel = 'No records found'
 }) {
+  const [titleColumn, ...restColumns] = columns;
+  const bodyColumns = restColumns.filter((c) => c.key !== 'actions');
+  const actionsColumn = restColumns.find((c) => c.key === 'actions');
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -27,7 +37,8 @@ export default function DataTable({
         {filters && <div className="flex flex-wrap gap-2">{filters}</div>}
       </div>
 
-      <div className="overflow-x-auto rounded-xl2 border border-ink-100 bg-surface">
+      {/* Desktop / tablet: table, unchanged */}
+      <div className="hidden overflow-x-auto rounded-xl2 border border-ink-100 bg-surface sm:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-ink-100 bg-ink-50/50 text-xs font-medium uppercase tracking-wide text-ink-300">
@@ -54,6 +65,44 @@ export default function DataTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: stacked cards */}
+      <div className="sm:hidden">
+        {rows.length === 0 ? (
+          <div className="rounded-xl2 border border-ink-100 bg-surface px-4 py-10 text-center text-sm text-ink-300">
+            {emptyLabel}
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {rows.map((row) => (
+              <li key={row[rowKey]} className="rounded-xl2 border border-ink-100 bg-surface p-4">
+                {titleColumn && (
+                  <div className="mb-3 font-medium text-ink-900">
+                    {titleColumn.render ? titleColumn.render(row) : row[titleColumn.key]}
+                  </div>
+                )}
+
+                {bodyColumns.length > 0 && (
+                  <dl className="space-y-2 border-t border-ink-100 pt-3 text-sm">
+                    {bodyColumns.map((c) => (
+                      <div key={c.key} className="flex items-start justify-between gap-4">
+                        <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-ink-300">{c.label}</dt>
+                        <dd className="text-right text-ink-700">{c.render ? c.render(row) : row[c.key]}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {actionsColumn && (
+                  <div className="mt-3 flex justify-end border-t border-ink-100 pt-3">
+                    {actionsColumn.render ? actionsColumn.render(row) : row[actionsColumn.key]}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {totalPages > 1 && (
