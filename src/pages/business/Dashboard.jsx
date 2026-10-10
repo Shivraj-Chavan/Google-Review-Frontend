@@ -106,7 +106,7 @@ export default function Dashboard() {
   /**
    * Initiate Google Business Profile OAuth
    */
-  async function connectGoogleAccount() {
+  const connectGoogleAccount = async () => {
     if (!business?.id || connectingGoogle) return;
 
     try {
@@ -135,12 +135,12 @@ export default function Dashboard() {
       );
       setConnectingGoogle(false);
     }
-  }
+  };
 
   /**
    * Disconnect Google Business Profile
    */
-  async function disconnectGoogleAccount() {
+  const disconnectGoogleAccount = async () => {
     if (!business?.id) return;
 
     try {
@@ -156,7 +156,7 @@ export default function Dashboard() {
         err.response?.data?.message || 'Failed to disconnect Google Business Profile'
       );
     }
-  }
+  };
 
   /**
    * Toggle Auto Reply.
@@ -164,7 +164,7 @@ export default function Dashboard() {
    * OFF = no automatic processing.
    * ON  = backend starts/permits automatic processing.
    */
-  async function toggleAutoReply() {
+  const toggleAutoReply = async () => {
     if (!business?.id || savingAutoReply) return;
 
     if (!googleConnected && !autoReplyEnabled) {
@@ -212,7 +212,7 @@ export default function Dashboard() {
     } finally {
       setSavingAutoReply(false);
     }
-  }
+  };
 
   if (business === undefined) {
     return <Loader label="Loading your dashboard…" />;
@@ -466,7 +466,7 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={connectGoogleAccount}
+                onClick={() => connectGoogleAccount()}
                 loading={connectingGoogle}
               >
                 Connect Google Account
@@ -477,7 +477,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={toggleAutoReply}
+                onClick={() => toggleAutoReply()}
                 disabled={savingAutoReply || connectingGoogle}
                 aria-label="Toggle Auto Reply"
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
@@ -519,7 +519,7 @@ export default function Dashboard() {
           {googleConnected && (
             <button
               type="button"
-              onClick={disconnectGoogleAccount}
+              onClick={() => disconnectGoogleAccount()}
               className="font-normal text-ink-400 underline transition hover:text-coral-500"
             >
               Disconnect Google Profile
