@@ -103,10 +103,12 @@ export default function Dashboard() {
     });
   }, []);
 
+  /**
+   * Initiate Google Business Profile OAuth
+   */
+  const connectGoogleAccount = async () => {
+    if (!business?.id || connectingGoogle) return;
 
-  async function connectGoogleBusiness() {
-    if (!business?.id) return;
-  
     try {
       const res = await api.post('/google-business/connect', {
         businessId: business.id,
@@ -121,12 +123,43 @@ export default function Dashboard() {
   
       window.location.href = authUrl;
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(
+        err.response?.data?.message ||
+        err.message ||
+        'Unable to connect Google Business Profile'
+      );
+      setConnectingGoogle(false);
     }
-  }
-  
+  };
 
-  async function toggleAutoReply() {
+  /**
+   * Disconnect Google Business Profile
+   */
+  const disconnectGoogleAccount = async () => {
+    if (!business?.id) return;
+
+    try {
+      await api.post('/google-business/disconnect', {
+        businessId: business.id,
+      });
+
+      setGoogleConnected(false);
+      setAutoReplyEnabled(false);
+      toast.success('Google Business Profile disconnected');
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || 'Failed to disconnect Google Business Profile'
+      );
+    }
+  };
+
+  /**
+   * Toggle Auto Reply.
+   *
+   * OFF = no automatic processing.
+   * ON  = backend starts/permits automatic processing.
+   */
+  const toggleAutoReply = async () => {
     if (!business?.id || savingAutoReply) return;
 
     if (!googleConnected && !autoReplyEnabled) {
@@ -174,7 +207,7 @@ export default function Dashboard() {
     } finally {
       setSavingAutoReply(false);
     }
-  }
+  };
 
   if (business === undefined) {
     return <Loader label="Loading your dashboard…" />;
@@ -446,7 +479,7 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={connectGoogleAccount}
+                onClick={() => connectGoogleAccount()}
                 loading={connectingGoogle}
               >
                 Connect Google Account
@@ -457,7 +490,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={toggleAutoReply}
+                onClick={() => toggleAutoReply()}
                 disabled={savingAutoReply || connectingGoogle}
                 aria-label="Toggle Auto Reply"
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
@@ -499,7 +532,7 @@ export default function Dashboard() {
           {googleConnected && (
             <button
               type="button"
-              onClick={disconnectGoogleAccount}
+              onClick={() => disconnectGoogleAccount()}
               className="font-normal text-ink-400 underline transition hover:text-coral-500"
             >
               Disconnect Google Profile
