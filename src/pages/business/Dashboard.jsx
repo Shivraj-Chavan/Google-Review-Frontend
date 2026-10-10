@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -110,27 +109,34 @@ export default function Dashboard() {
     if (!business?.id || connectingGoogle) return;
 
     try {
+      setConnectingGoogle(true);
       const res = await api.post('/google-business/connect', {
         businessId: business.id,
+        clientOrigin: window.location.origin,
       });
-  
+
       const authUrl = res.data?.data?.authUrl;
-  
+
       if (!authUrl) {
         toast.error('Google authorization URL was not returned');
+        setConnectingGoogle(false);
         return;
       }
-  
+
       window.location.href = authUrl;
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
         err.message ||
+        getErrorMessage(err) ||
         'Unable to connect Google Business Profile'
       );
       setConnectingGoogle(false);
     }
   };
+
+  // Alias so both names work everywhere
+  const connectGoogleBusiness = connectGoogleAccount;
 
   /**
    * Disconnect Google Business Profile
@@ -148,10 +154,14 @@ export default function Dashboard() {
       toast.success('Google Business Profile disconnected');
     } catch (err) {
       toast.error(
-        err.response?.data?.message || 'Failed to disconnect Google Business Profile'
+        err.response?.data?.message ||
+        getErrorMessage(err) ||
+        'Failed to disconnect Google Business Profile'
       );
     }
   };
+
+  const disconnectGoogleBusiness = disconnectGoogleAccount;
 
   /**
    * Toggle Auto Reply.
@@ -163,6 +173,7 @@ export default function Dashboard() {
     if (!business?.id || savingAutoReply) return;
 
     if (!googleConnected && !autoReplyEnabled) {
+      toast('Please connect your Google Business Profile first', { icon: 'ℹ️' });
       await connectGoogleAccount();
       return;
     }
@@ -193,6 +204,7 @@ export default function Dashboard() {
     } catch (err) {
       const message =
         err.response?.data?.message ||
+        getErrorMessage(err) ||
         '';
 
       if (
@@ -436,23 +448,49 @@ export default function Dashboard() {
         </Card>
       )}
 
-<Card className="flex items-center justify-between gap-4">
-  <div>
-    <p className="font-medium text-ink-900">
-      Google Business Profile
-    </p>
-    <p className="text-xs text-ink-300">
-      Connect your Google Business Profile to enable Auto Reply.
-    </p>
-  </div>
+      {/* Google Business Profile Card */}
+      <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Building2 className="h-5 w-5 text-ink-700" />
+          <div>
+            <p className="font-medium text-ink-900">
+              Google Business Profile
+            </p>
+            <p className="text-xs text-ink-300">
+              {googleConnected
+                ? 'Your Google Business Profile is connected and synced.'
+                : 'Connect your Google Business Profile to enable automatic review replies.'}
+            </p>
+          </div>
+        </div>
 
-  <Button
-    type="button"
-    onClick={connectGoogleBusiness}
-  >
-    Connect Google
-  </Button>
-</Card>
+        <div className="flex items-center gap-3">
+          {googleConnected ? (
+            <>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                Connected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => disconnectGoogleAccount()}
+              >
+                Disconnect
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => connectGoogleAccount()}
+              loading={connectingGoogle}
+            >
+              Connect Google
+            </Button>
+          )}
+        </div>
+      </Card>
 
       {/* Google Review Auto Reply */}
       <Card className="space-y-4">
@@ -469,51 +507,33 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {googleConnected ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                Google Connected
-              </span>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => connectGoogleAccount()}
-                loading={connectingGoogle}
-              >
-                Connect Google Account
-              </Button>
-            )}
-
-            {/* ON / OFF Switch */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => toggleAutoReply()}
-                disabled={savingAutoReply || connectingGoogle}
-                aria-label="Toggle Auto Reply"
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                  autoReplyEnabled ? 'bg-emerald-500' : 'bg-ink-200'
+          {/* ON / OFF Switch */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => toggleAutoReply()}
+              disabled={savingAutoReply || connectingGoogle}
+              aria-label="Toggle Auto Reply"
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                autoReplyEnabled ? 'bg-emerald-500' : 'bg-ink-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                  autoReplyEnabled ? 'translate-x-6' : 'translate-x-1'
                 }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                    autoReplyEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              />
+            </button>
 
-              <span className="text-xs font-medium text-ink-700">
-                {autoReplyEnabled ? 'ON' : 'OFF'}
-              </span>
-            </div>
+            <span className="text-sm font-medium text-ink-700">
+              {autoReplyEnabled ? 'Auto Reply Enabled' : 'Auto Reply Disabled'}
+            </span>
           </div>
         </div>
 
         {/* Status bar */}
         <div
-          className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
+          className={`rounded-xl px-3 py-2 text-xs font-medium ${
             autoReplyEnabled
               ? 'bg-emerald-50 text-emerald-700'
               : googleConnected
@@ -521,27 +541,14 @@ export default function Dashboard() {
               : 'bg-ink-50 text-ink-500'
           }`}
         >
-          <span>
-            {autoReplyEnabled
-              ? '● Auto Reply Active — AI will automatically respond to new reviews'
-              : googleConnected
-              ? '● Google Connected — Auto Reply is currently paused (toggle ON to activate)'
-              : '○ Google Account Not Connected — Connect your Google Business Profile to enable AI replies'}
-          </span>
-
-          {googleConnected && (
-            <button
-              type="button"
-              onClick={() => disconnectGoogleAccount()}
-              className="font-normal text-ink-400 underline transition hover:text-coral-500"
-            >
-              Disconnect Google Profile
-            </button>
-          )}
+          {autoReplyEnabled
+            ? '● Auto Reply Active — AI will automatically respond to new reviews'
+            : googleConnected
+            ? '○ Auto Reply Paused — Turn toggle ON to start automatic AI replies'
+            : '○ Google Account Not Connected — Connect your Google Business Profile above to enable AI replies'}
         </div>
       </Card>
 
     </div>
   );
 }
-
