@@ -786,7 +786,7 @@ export default function Landing() {
       </p>
     )}
 
-    {/* {import.meta.env.DEV && (
+    {import.meta.env.DEV && (
       <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-2">
         <input
           type="email"
@@ -804,11 +804,10 @@ export default function Landing() {
         >
           {devLoading ? '...' : 'Go'}
         </button>
-      </div>
-    )} */}
+      </div>  
+    )}
   </div>
 {/* </div> */}
-
 
 
               <button
@@ -836,7 +835,7 @@ export default function Landing() {
                 Free to start
               </div>
             </div>
-          </div>
+          </div>  
 
 
           {/* =====================================================

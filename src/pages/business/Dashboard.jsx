@@ -57,12 +57,29 @@ export default function Dashboard() {
     });
   }, []);
 
-  /**
-   * Toggle Auto Reply.
-   *
-   * OFF = no automatic processing.
-   * ON  = backend starts/permits automatic processing.
-   */
+
+  async function connectGoogleBusiness() {
+    if (!business?.id) return;
+  
+    try {
+      const res = await api.post('/google-business/connect', {
+        businessId: business.id,
+      });
+  
+      const authUrl = res.data?.data?.authUrl;
+  
+      if (!authUrl) {
+        toast.error('Google authorization URL was not returned');
+        return;
+      }
+  
+      window.location.href = authUrl;
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  }
+  
+
   async function toggleAutoReply() {
     if (!business?.id || savingAutoReply) return;
   
@@ -361,6 +378,24 @@ export default function Dashboard() {
 
         </Card>
       )}
+
+<Card className="flex items-center justify-between gap-4">
+  <div>
+    <p className="font-medium text-ink-900">
+      Google Business Profile
+    </p>
+    <p className="text-xs text-ink-300">
+      Connect your Google Business Profile to enable Auto Reply.
+    </p>
+  </div>
+
+  <Button
+    type="button"
+    onClick={connectGoogleBusiness}
+  >
+    Connect Google
+  </Button>
+</Card>
 
       {/* Google Review Auto Reply */}
       <Card className="space-y-4">
