@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Loader } from './components/Basics';
 
@@ -17,6 +17,11 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminUsers from './pages/admin/AdminUsers';
+
+function LegacyDashboardRedirect() {
+  const location = useLocation();
+  return <Navigate to={{ pathname: '/business/dashboard', search: location.search }} replace />;
+}
 
 function RequireBusinessUser({ children }) {
   const { user, loading } = useAuth();
@@ -61,6 +66,7 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
+      <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

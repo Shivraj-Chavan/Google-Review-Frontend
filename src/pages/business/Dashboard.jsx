@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Link2,
@@ -12,6 +12,7 @@ import {
   ArrowRight,
   CalendarClock,
   MessageSquareReply,
+  CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,10 +24,45 @@ import api from '../../services/api';
 export default function Dashboard() {
   const [business, setBusiness] = useState(undefined);
   const [analytics, setAnalytics] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Only ON / OFF
+  // Google Business Profile connection & Auto Reply
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
   const [savingAutoReply, setSavingAutoReply] = useState(false);
+
+  // Handle OAuth callback status from URL
+  useEffect(() => {
+    const status = searchParams.get('google_business');
+    if (!status) return;
+
+    if (status === 'connected') {
+      toast.success('Google Business Profile connected successfully! Auto Reply is now enabled.');
+      setGoogleConnected(true);
+      setAutoReplyEnabled(true);
+    } else if (status === 'cancelled') {
+      toast.error('Google authorization was cancelled.');
+    } else if (status === 'no_account') {
+      toast.error(
+        'No Google Business Profile account found for this Google login. Please use the Google account that manages your business.',
+        { duration: 6000 }
+      );
+    } else if (status === 'no_location') {
+      toast.error(
+        'Google account connected, but no business locations were found in Google Business Profile.',
+        { duration: 6000 }
+      );
+    } else if (status === 'api_error' || status === 'error') {
+      const rawMsg = searchParams.get('message') || 'Google Business connection failed. Please check Google Cloud API permissions.';
+      toast.error(`Connection failed: ${decodeURIComponent(rawMsg)}`, { duration: 7000 });
+    }
+
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('google_business');
+    newParams.delete('message');
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     api.get('/businesses/my').then((res) => {
@@ -40,6 +76,7 @@ export default function Dashboard() {
           .then((r) => setAnalytics(r.data.data.summary))
           .catch(() => {});
 
+        // Fetch auto-reply settings
         api
           .get(`/businesses/${b.id}/auto-reply`)
           .then((r) => {
@@ -50,12 +87,76 @@ export default function Dashboard() {
             setAutoReplyEnabled(enabled);
           })
           .catch(() => {
-            // Always remain OFF if settings cannot be loaded
             setAutoReplyEnabled(false);
+          });
+
+        // Fetch Google Business Profile connection status
+        api
+          .get(`/google-business/status/${b.id}`)
+          .then((r) => {
+            setGoogleConnected(Boolean(r.data?.data?.connected));
+          })
+          .catch(() => {
+            setGoogleConnected(false);
           });
       }
     });
   }, []);
+
+  /**
+   * Initiate Google Business Profile OAuth
+   */
+  async function connectGoogleAccount() {
+    if (!business?.id || connectingGoogle) return;
+
+    try {
+      setConnectingGoogle(true);
+      const connectRes = await api.post(
+        '/google-business/connect',
+        {
+          businessId: business.id,
+          clientOrigin: window.location.origin,
+        }
+      );
+
+      const authUrl = connectRes.data?.data?.authUrl;
+
+      if (!authUrl) {
+        throw new Error('Google authorization URL was not returned');
+      }
+
+      // Open Google authorization
+      window.location.href = authUrl;
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+        err.message ||
+        'Unable to connect Google Business Profile'
+      );
+      setConnectingGoogle(false);
+    }
+  }
+
+  /**
+   * Disconnect Google Business Profile
+   */
+  async function disconnectGoogleAccount() {
+    if (!business?.id) return;
+
+    try {
+      await api.post('/google-business/disconnect', {
+        businessId: business.id,
+      });
+
+      setGoogleConnected(false);
+      setAutoReplyEnabled(false);
+      toast.success('Google Business Profile disconnected');
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || 'Failed to disconnect Google Business Profile'
+      );
+    }
+  }
 
   /**
    * Toggle Auto Reply.
@@ -65,25 +166,30 @@ export default function Dashboard() {
    */
   async function toggleAutoReply() {
     if (!business?.id || savingAutoReply) return;
-  
+
+    if (!googleConnected && !autoReplyEnabled) {
+      await connectGoogleAccount();
+      return;
+    }
+
     const newValue = !autoReplyEnabled;
-  
+
     try {
       setSavingAutoReply(true);
-  
+
       const res = await api.put(
         `/businesses/${business.id}/auto-reply`,
         {
           enabled: newValue,
         }
       );
-  
+
       const savedValue = Boolean(
         res.data?.data?.settings?.enabled
       );
-  
+
       setAutoReplyEnabled(savedValue);
-  
+
       if (savedValue) {
         toast.success('Google Review Auto Reply is now ON');
       } else {
@@ -93,38 +199,11 @@ export default function Dashboard() {
       const message =
         err.response?.data?.message ||
         '';
-  
-      // Google Business Profile is not connected
+
       if (
         message.toLowerCase().includes('connect your google business')
       ) {
-        try {
-          const connectRes = await api.post(
-            '/google-business/connect',
-            {
-              businessId: business.id,
-            }
-          );
-  
-          const authUrl =
-            connectRes.data?.data?.authUrl;
-  
-          if (!authUrl) {
-            throw new Error(
-              'Google authorization URL was not returned'
-            );
-          }
-  
-          // Open Google authorization
-          window.location.href = authUrl;
-          return;
-        } catch (connectError) {
-          toast.error(
-            connectError.response?.data?.message ||
-            connectError.message ||
-            'Unable to connect Google Business Profile'
-          );
-        }
+        await connectGoogleAccount();
       } else {
         toast.error(
           message || 'Failed to update Auto Reply'
@@ -364,56 +443,89 @@ export default function Dashboard() {
 
       {/* Google Review Auto Reply */}
       <Card className="space-y-4">
-
-        <div className="flex items-center justify-between">
-
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <MessageSquareReply className="h-5 w-5 text-ink-700" />
-
             <div>
               <p className="font-medium text-ink-900">
                 Google Review Auto Reply
               </p>
-
               <p className="text-xs text-ink-300">
                 Automatically reply to new Google reviews using AI.
               </p>
             </div>
           </div>
 
-          {/* ON / OFF */}
-         <button
-  onClick={toggleAutoReply}
-  className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-    autoReplyEnabled ? "bg-green-500" : "bg-gray-300"
-  }`}
->
-  <span
-    className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-      autoReplyEnabled ? "translate-x-6" : "translate-x-1"
-    }`}
-  />
-</button>
+          <div className="flex flex-wrap items-center gap-3">
+            {googleConnected ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                Google Connected
+              </span>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={connectGoogleAccount}
+                loading={connectingGoogle}
+              >
+                Connect Google Account
+              </Button>
+            )}
 
-<p className="text-sm text-gray-500">
-  {autoReplyEnabled ? "Auto Reply Enabled" : "Auto Reply Disabled"}
-</p>
+            {/* ON / OFF Switch */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleAutoReply}
+                disabled={savingAutoReply || connectingGoogle}
+                aria-label="Toggle Auto Reply"
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                  autoReplyEnabled ? 'bg-emerald-500' : 'bg-ink-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                    autoReplyEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
 
+              <span className="text-xs font-medium text-ink-700">
+                {autoReplyEnabled ? 'ON' : 'OFF'}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Status */}
+        {/* Status bar */}
         <div
-          className={`rounded-xl px-3 py-2 text-xs font-medium ${
+          className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
             autoReplyEnabled
               ? 'bg-emerald-50 text-emerald-700'
+              : googleConnected
+              ? 'bg-sky-50 text-sky-700'
               : 'bg-ink-50 text-ink-500'
           }`}
         >
-          {autoReplyEnabled
-            ? '● Auto Reply Active'
-            : '○ Auto Reply Disabled'}
-        </div>
+          <span>
+            {autoReplyEnabled
+              ? '● Auto Reply Active — AI will automatically respond to new reviews'
+              : googleConnected
+              ? '● Google Connected — Auto Reply is currently paused (toggle ON to activate)'
+              : '○ Google Account Not Connected — Connect your Google Business Profile to enable AI replies'}
+          </span>
 
+          {googleConnected && (
+            <button
+              type="button"
+              onClick={disconnectGoogleAccount}
+              className="font-normal text-ink-400 underline transition hover:text-coral-500"
+            >
+              Disconnect Google Profile
+            </button>
+          )}
+        </div>
       </Card>
 
     </div>
