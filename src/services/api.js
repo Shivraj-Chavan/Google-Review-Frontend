@@ -2,6 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api' });
 
+// const api = axios.create({ baseURL: 'http://69.62.84.113:5012/api' });
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('loop_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
